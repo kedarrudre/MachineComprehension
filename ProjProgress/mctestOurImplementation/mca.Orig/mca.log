@@ -1,0 +1,112 @@
+**** Reading data ****
+Reading file /Users/msingh/cs221/project/mctDataSet/MCTest/mc160.train.tsv: START
+Reading file /Users/msingh/cs221/project/mctDataSet/MCTest/mc160.train.tsv: DONE
+Reading file /Users/msingh/cs221/project/mctDataSet/MCTest/mc160.dev.tsv: START
+Reading file /Users/msingh/cs221/project/mctDataSet/MCTest/mc160.dev.tsv: DONE
+Size of stories, dev = 70, train = 30
+**** training ****
+**** predicting answers ****
+mc160.dev.0
+mc160.dev.1
+mc160.dev.2
+mc160.dev.3
+mc160.dev.4
+mc160.dev.5
+mc160.dev.6
+mc160.dev.7
+mc160.dev.8
+mc160.dev.9
+mc160.dev.10
+mc160.dev.11
+mc160.dev.12
+mc160.dev.13
+mc160.dev.14
+mc160.dev.15
+mc160.dev.16
+mc160.dev.17
+mc160.dev.18
+mc160.dev.19
+mc160.dev.20
+mc160.dev.21
+mc160.dev.22
+mc160.dev.23
+mc160.dev.24
+mc160.dev.25
+mc160.dev.26
+mc160.dev.27
+mc160.dev.28
+mc160.dev.29
+mc160.train.0
+mc160.train.1
+mc160.train.2
+mc160.train.3
+mc160.train.4
+mc160.train.5
+mc160.train.6
+mc160.train.7
+mc160.train.8
+mc160.train.9
+mc160.train.10
+mc160.train.11
+mc160.train.12
+mc160.train.13
+mc160.train.14
+mc160.train.15
+mc160.train.16
+mc160.train.17
+mc160.train.18
+mc160.train.19
+mc160.train.20
+mc160.train.21
+mc160.train.22
+mc160.train.23
+mc160.train.24
+mc160.train.25
+mc160.train.26
+mc160.train.27
+mc160.train.28
+mc160.train.29
+mc160.train.30
+mc160.train.31
+mc160.train.32
+mc160.train.33
+mc160.train.34
+mc160.train.35
+mc160.train.36
+mc160.train.37
+mc160.train.38
+mc160.train.39
+mc160.train.40
+mc160.train.41
+mc160.train.42
+mc160.train.43
+mc160.train.44
+mc160.train.45
+mc160.train.46
+mc160.train.47
+mc160.train.48
+mc160.train.49
+mc160.train.50
+mc160.train.51
+mc160.train.52
+mc160.train.53
+mc160.train.54
+mc160.train.55
+mc160.train.56
+mc160.train.57
+mc160.train.58
+mc160.train.59
+mc160.train.60
+mc160.train.61
+mc160.train.62
+mc160.train.63
+mc160.train.64
+mc160.train.65
+mc160.train.66
+mc160.train.67
+mc160.train.68
+mc160.train.69
+**** Statistics ****
+All accuracy [400]: 0.5150
+Single accuracy [185]: 0.5351
+Multiple accuracy [215]: 0.4977

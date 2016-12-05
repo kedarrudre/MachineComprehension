@@ -1,0 +1,272 @@
+Reading file /Users/msingh/cs221/project/mctDataSet/MCTest/mc160.train.tsv: START
+Reading file /Users/msingh/cs221/project/mctDataSet/MCTest/mc160.train.tsv: DONE
+Reading file /Users/msingh/cs221/project/mctDataSet/MCTest/mc160.dev.tsv: START
+Reading file /Users/msingh/cs221/project/mctDataSet/MCTest/mc160.dev.tsv: DONE
+token is  all
+token is  bowl
+token is  rest
+token is  bring
+token is  sleep
+token is  looks
+token is  with.Daddy
+token is  children
+token is  licks
+token is  curls
+token is  ,
+token is  better
+token is  to
+token is  lets
+token is  has
+token is  his
+token is  goes
+token is  food
+token is  blanket
+token is  She
+token is  height
+token is  cage
+token is  bag
+token is  she
+token is  because
+token is  back
+token is  bark
+token is  thinks
+token is  really
+token is  Alan
+token is  everything
+token is  outside
+token is  does
+token is  pets
+token is  waterbowl
+token is  catgets
+token is  water
+token is  mailman
+token is  on
+token is  comesto
+token is  lamb.She
+token is  of
+token is  favorite
+token is  throws
+token is  Her
+token is  No
+token is  sweet
+token is  one
+token is  right
+token is  likes
+token is  toys
+token is  Luluuse
+token is  there.Her
+token is  Heatherglass
+token is  little
+token is  from
+token is  her
+token is  there
+token is  barks
+token is  .
+token is  chases
+token is  gives
+token is  door
+token is  that
+token is  but
+token is  Daddy
+token is  with
+token is  eat
+token is  liketo
+token is  up
+token is  bed
+token is  cat
+token is  n't
+token is  Lauren
+token is  Heather
+token is  is
+token is  it
+token is  at
+token is  in
+token is  lamb
+token is  when
+token is  couch
+token is  Grandma
+token is  gets
+token is  mad.Lulu
+token is  Alanbetter
+token is  picture
+token is  play
+token is  drink
+token is  mad
+token is  The
+token is  a
+token is  Lulu
+token is  dog
+token is  time
+token is  lookslike
+token is  the
+('multiple', ' What was the hardest thing for Tom and his friends to fix?')
+['Door', 'House', 'Window', 'Toilet']
+3
+
+
+('one', ' What did Tom need to fix first?')
+['Door', 'House', 'Window', 'Toilet']
+3
+
+
+('multiple', " Jim didn't bring which person with him?")
+['Jim', 'Dolly', 'Molly', 'Holly']
+1
+
+
+('one', " Who was Tom's best friend?")
+['Molly', 'Holly', 'Jim', 'Dolly']
+3
+
+
+('multiple', " What day is Whisker's Birthday?")
+['Today', 'Last year', 'Friday', 'Saturday']
+2
+
+
+('multiple', ' What does Whiskers like to do?')
+['Sleep in the sun and drink creamy milk', 'Play', 'Drink', 'Sleep']
+0
+
+
+('multiple', ' What color is Whiskers?')
+['All white with a black spot', 'White', 'Black', 'Black with white paws and a white spot']
+3
+
+
+('multiple', ' What does Lisa buy for Whiskers for this birthday?')
+['A bowl with a cat on it', 'A play mouse', 'A red ball of yarn and a bowl with a cat on it', 'A blue feather']
+2
+
+
+('multiple', ' Where do the main characters live?')
+['A home for orphans.', 'A house.', 'An Apartment.', 'A trailer park.']
+0
+
+
+('one', " What is the girl's name?")
+['Patty', 'Katerina', 'Kate', 'Katherine']
+2
+
+
+('one', ' What is wrong with the girl?')
+['She has the flu.', 'She has a heart problem.', 'She has diabetes.', 'She has a cold.']
+1
+
+
+('one', " What is the boy's name?")
+['Hawthorne', "Hawthorne's", 'Hamlet', 'Jeremy']
+1
+
+
+('one', ' What was the strange guy doing with the friend?')
+['enjoying a meal', 'talking about his job', 'talking to him', 'trying to beat him']
+0
+
+
+('one', ' Why did the strange guy run away?')
+['because he heard the cop car', 'because he saw his friend', "because he didn't like the dinner", 'because it was getting late']
+3
+
+
+('one', ' Who was the strange guy dressed up as?')
+['a sword', 'a car', 'a superhero', 'a cop']
+2
+
+
+('one', " What did they eat at the friend's house?")
+['lunch', 'snack', 'breakfast', 'dinner']
+3
+
+
+('one', ' Why was Alex proud of James?')
+['Alex was proud because James was brave.', 'He was proud because he was his hero.', 'He was proud because he was weak.', 'He was proud because he was scared.']
+1
+
+
+('one', ' Who is the character that is fat and is being bullied?')
+['Alex', 'Gordon', 'Johnny', 'James']
+1
+
+
+('multiple', ' What did the bullies do after James stood up to them?')
+['They wanted to be heroes. They were protecting themselves.', "The bullies didn't know what to do and gave up. They went away to look for more fun things.", 'They were scared. They stood up for each other.', 'They were weak. They remembered all the times they were being protected.']
+3
+
+
+('multiple', ' Why did James stand up to the bullies?')
+['Because he was weak. He wanted to be the opposite.', "He wanted to protect himself. He didn't want Alex to always help him.", 'Because they grew up together. They were best friends.', 'He wanted to not be scared. He wanted someone to be proud of him.']
+1
+
+
+('multiple', " Who didn't invite Martha to the party?")
+['The park', 'No one', 'Martha', 'Stephan']
+3
+
+
+('multiple', ' Why was Martha confused?')
+["She didn't know who she was", "She didn't know where she was", "She didn't know what time it was", "She couldn't find her friends"]
+3
+
+
+('one', ' What kind of day was it?')
+['Sunny', 'Windy', 'Rainy', 'Cloudy']
+3
+
+
+('one', ' Where did Martha check first at the park?')
+['Under the benches', 'At her house', 'Restrooms', 'At the top of the slides']
+0
+
+
+('multiple', ' Why did mom say Sam could not play?')
+['It was time for a bath.', 'It was time to go to school.', 'Sam had to pet the cat.', 'It was time for breakfast.']
+1
+
+
+('one', " Who is Sam's best friend?")
+['Katy', 'John', 'Bill', 'Ralph']
+0
+
+
+('multiple', ' Why does Sam love Ralph?')
+['Because Ralph licks him on the face and has floppy ears.', 'Because Ralph likes to lick him on the face and play.', 'Because Ralph likes to run and play.', 'Because Ralph likes to jump and run.']
+3
+
+
+('one', " What is Sam's favorite cereal?")
+['Fruit Loops', "Friendly O's", 'Cheerios', 'Sharkies']
+2
+
+
+('one', " Why were Bentley's human's upset?")
+['They had been stuck in traffic', 'The house was wet', 'The door was open', 'The animals ripped the sofa']
+1
+
+
+('one', ' What was the name of the cat Bentley met?')
+['Bentley', 'Human', 'Felix', 'Puppy']
+3
+
+
+('one', ' What was Bentley digging in?')
+['River', 'Trash', 'Dirt', 'Street']
+3
+
+
+('multiple', ' Where did the two animals go after digging in the trash?')
+['The city', 'River', 'Space', 'Home']
+0
+
+
+('multiple', ' Which item did Timmy like to collect the most?')
+['Baseball cards', 'Bottle caps', 'Sea shells', 'Stamps']
+2
+
+
+('one', " Which is Timmy's most expensive collection?")
+['Sea Shells', 'Baseball Cards', 'Stamps', 'Bottle Cap']
+Traceback (most recent call last):
+  File "mca.py", line 30, in <module>
+    print story.rawAnswers[id]
+KeyboardInterrupt
