@@ -27,7 +27,7 @@ NNNI-1
 I-1
 I0
 tp11
-bS'dWp\xc8\xec\xf7\x03@'
+bS'|z\x85\x8aF\x15\x04@'
 p12
 tp13
 Rp14
@@ -35,8 +35,16 @@ sS'baseline_score'
 p15
 g5
 (g9
-S'\x97\xe1\xdb4\xca7\xda?'
+S'\xa0\x15\xabtL\x88\xd5?'
 p16
 tp17
 Rp18
+sS'baseline_sentence_score'
+p19
+g5
+(g9
+S'\x8d\xe5\x97L=\x83\xf9?'
+p20
+tp21
+Rp22
 s.

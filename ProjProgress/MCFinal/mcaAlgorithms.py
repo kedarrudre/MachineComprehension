@@ -278,6 +278,7 @@ class MCTLinearRegression(object):
         self.buckets = 20
         self.weights = defaultdict()
         self.icounts = {}
+        self.icountsPerStory = {}
         self.cache = defaultdict()
         self.params = {'read_weights_from_file': 0,
                        'number_of_cccp_iterations': 2,
@@ -285,7 +286,7 @@ class MCTLinearRegression(object):
                        'T': 1,
                        'lambda': 0.1,
                        'delta': 0.001,
-                       'features': ['sum_tfidf','baseline_score', 'baseline_sentence_score']
+                       'features': ['sum_tfidf','baseline_score', 'baseline_sentence_score', 'baseline_sentence_perStory_score']
                        }
 
     def updateParameter(self, p, v):
@@ -378,6 +379,8 @@ class MCTLinearRegression(object):
         baseline_score = 0.0
         # sliding window bag of word as in baseline (consider one sentence)
         baseline_sentence_score = 0.0
+        # sliding window bag of word as in baseline (consider one sentence, and iCounts is per story)
+        baseline_sentence_perStory_score = 0.0
         
         def get_tfidf(name, response, feature_names):
             if name in feature_names:
@@ -431,12 +434,17 @@ class MCTLinearRegression(object):
         sentence_length = len(sentence)
         for i in xrange(sentence_length):
             score = 0.0
+            scorePerStory = 0.0
             for j in xrange(window_size):
                 if i+j < sentence_length and sentence[i+j] in target:
                     score += self.icounts[sentence[i+j]]
+                    scorePerStory += self.icountsPerStory[story.name][sentence[i+j]]
             if score > baseline_sentence_score:
                 baseline_sentence_score = score
+            if scorePerStory > baseline_sentence_perStory_score:
+                baseline_sentence_perStory_score = scorePerStory
         features['baseline_sentence_score'] = baseline_sentence_score
+        features['baseline_sentence_perStory_score'] = baseline_sentence_perStory_score
 
         return features
         
@@ -477,9 +485,11 @@ class MCTLinearRegression(object):
         counts = defaultdict(lambda: 0)
         countsPerStory = defaultdict(lambda: 0)
         for story in stories:
+            countsPerStory[story.name] = defaultdict(lambda: 0)
             for token in story.passage:
                 token = token.strip()
                 counts[token] += 1.0
+                countsPerStory[story.name][token] += 1
         if self.verbose > 4:
             print "counts %s" %(len(counts))
             for item, value in sorted(counts.items()):
@@ -488,6 +498,12 @@ class MCTLinearRegression(object):
                 
         for token, token_count in counts.iteritems():
             self.icounts[token] = np.log(1.0 + 1.0/token_count)
+        
+        for story in stories:
+            self.icountsPerStory[story.name] = defaultdict()
+            for tkn, tknCnt in countsPerStory[story.name].iteritems():
+                self.icountsPerStory[story.name][tkn] = np.log(1.0 + 1.0/tknCnt)
+
         if self.verbose > 4:
             print "icounts are:"
             for item, value in sorted(self.icounts.iteritems()):
