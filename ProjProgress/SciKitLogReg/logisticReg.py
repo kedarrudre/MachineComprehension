@@ -9,8 +9,8 @@ iris = datasets.load_iris()
 X = iris.data[:, [2,3]]
 Y = iris.target
 # print iris
-print X
-print Y
+# print X
+# print Y
 
 # Split the data into train and test (70% train and 30% test)
 from sklearn.model_selection import train_test_split
