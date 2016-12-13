@@ -1,0 +1,6 @@
+*.pyc
+*.sln
+*.pyproj
+ProjProgress/mctest/
+ProjProgress/protobuf/
+ProjProgress/MCFinal/output
