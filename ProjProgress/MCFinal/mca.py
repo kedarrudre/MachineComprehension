@@ -16,6 +16,13 @@ parser.add_argument("-algo", help='Possible algorithms: [slidingWindow, linearRe
 parser.add_argument("-stories", help="stories in tsv format; can be added multiple times", default=None, required=True, action='append')
 parser.add_argument("-answers", help="answers in tsv format; can be added multiple times", default=None, required=True, action='append')
 parser.add_argument("-verbose", type=int, help="increase output verbosity", default=0)
+parser.add_argument("-eta", type=float, help="SGD step", default=0.005)
+parser.add_argument("-T",  type=int, help="SGD iterations of total samples", default=3)
+parser.add_argument("-Lambda", type=float, help="Lamda", default=0.1)
+parser.add_argument("-delta", type=float, help="delta for gradient calculation", default=0.0001)
+parser.add_argument("-cccp_itr_count", type=int, help="Number of CCCP iterations", default=10)
+parser.add_argument("--notrain", help='dont train, read weights from file <weights.txt>', action='store_true')
+parser.add_argument("--startFromExistingWeights", help='read weights from file <weights.txt> to start', action='store_true')
 args = parser.parse_args()
 
 def slidingWindow():
@@ -116,6 +123,18 @@ def linearRegression():
     
     ## Linear Regression algorithm
     linearRegressionAlgo = mcaAlgorithms.MCTLinearRegression(args.verbose)
+
+    # update parameters
+    linearRegressionAlgo.updateParameter('eta', args.eta)
+    linearRegressionAlgo.updateParameter('T', args.T)
+    linearRegressionAlgo.updateParameter('lambda', args.Lambda)
+    linearRegressionAlgo.updateParameter('delta', args.delta)
+    linearRegressionAlgo.updateParameter('number_of_cccp_iterations', args.cccp_itr_count)
+
+    if args.notrain:
+        linearRegressionAlgo.updateParameter('read_weights_from_file', True)
+    if args.startFromExistingWeights:
+        linearRegressionAlgo.updateParameter('startFromExistingWeights', True)
     
     if args.verbose > 0:
         print '**** training ****'
@@ -174,6 +193,9 @@ def linearRegression():
     num_s = float(np.sum(~multiples))
 
     assert num_m + num_s == total
+
+    print 'Single accuracy = %s' %(np.sum(myAnswers[~multiples] == correctAnswers[~multiples]))
+    print 'Multiple accuracy = %s' %(np.sum(myAnswers[multiples] == correctAnswers[multiples]))
 
     print 'All accuracy [%d]: %.4f' %(total, float(correct)/float(total))
     print 'Single accuracy [%d]: %.4f' %(num_s, np.sum(myAnswers[~multiples] == correctAnswers[~multiples])/num_s)
