@@ -58,8 +58,18 @@ def cccp(f, stories, params):
     # T number of iterations to run
     # returns weights
     weights = defaultdict(float)
-    for item in params['features']:
-        weights[item] = random.random()
+    if params['startFromExistingWeights']:
+        if os.path.isfile('weights.txt'):
+            with open('weights.txt', 'rb') as myWeightsFile:
+                weights = pickle.loads(myWeightsFile.read())
+                myWeightsFile.close()
+                copyfile('weights.txt', 'weights.prev.txt')
+                print 'Reading existing weights to start from weights.txt'
+        else:
+            exit('weights.txt file is not found')
+    else:
+        for item in params['features']:
+            weights[item] = random.random()
 
     if params['read_weights_from_file']:
         if os.path.isfile('weights.txt'):
@@ -158,6 +168,9 @@ def cccp(f, stories, params):
         
         # print the loss
         print('iteration %s, f = %s' %(itr, func()))
+
+        # empty optimalSentenceIds
+        optimalSentenceIds = []
         
     if os.path.isfile('weights.txt'):  
         copyfile('weights.txt', 'weights.1.txt')

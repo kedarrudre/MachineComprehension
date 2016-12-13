@@ -161,7 +161,8 @@ class MCTReadData(object):
 
         # collect stop words
         stopwords = set()
-        fin = open('C:\Personal\Learnings\Stanford\Project\src\MachineComprehension\ProjProgress\MCFinal\data\stopwords.txt','rU')
+#        fin = open('/Users/msingh/cs221/project/mctDataSet/mctest-master/data/stopwords.txt','rU')
+        fin = open('stopwords.txt','rU')
         for stopword in fin:
             s = stopword.lower().strip()
             stopwords.add(s)
@@ -280,14 +281,39 @@ class MCTLinearRegression(object):
         self.icounts = {}
         self.icountsPerStory = {}
         self.cache = defaultdict()
+        self.cache['features'] = {}
         self.params = {'read_weights_from_file': 0,
                        'number_of_cccp_iterations': 2,
-                       'eta': 0.005,
+                       'eta': 0.001,
                        'T': 1,
                        'lambda': 0.1,
                        'delta': 0.001,
-                       'features': ['sum_tfidf','baseline_score', 'baseline_sentence_score', 'baseline_sentence_perStory_score']
+                       'features': []
                        }
+        self.params['startFromExistingWeights'] = False
+        self.params['features'].append('sum_tfidf')
+        self.params['features'].append('baseline_score')
+        self.params['features'].append('baseline_sentence_score')
+        self.params['features'].append('baseline_sentence_perStory_score')
+        self.params['features'].append('question_negation')
+#        self.params['features'].append('length_of_sentence')
+#        self.params['features'].append('length_of_question')
+#        self.params['features'].append('length_of_answer')
+        self.params['features'].append('question is of type multiple')
+        self.params['features'].append('question is of type one')
+
+#        for i in range(10):
+#            self.params['features'].append('length_of_common_words_in_qas is ' + str(i))
+
+#        self.sum_tfidf_buckets = 5
+#        self.sum_tfidf_max_score = 2.0
+
+    def createBucketSumtfidf(self):
+        bucketSize = self.sum_tfidf_max_score/self.sum_tfidf_buckets
+        for i in range(self.sum_tfidf_buckets):
+            self.params['features'].append('sum_tfidf is between '+str(bucketSize*i)+' and '+str(bucketSize*(i+1)))
+            
+        self.params['features'].append('sum_tfidf is more than ' + str(self.sum_tfidf_max_score))
 
     def updateParameter(self, p, v):
         self.params[p] = v
@@ -375,12 +401,15 @@ class MCTLinearRegression(object):
         features = defaultdict()
         # sum of tfidf of common words in sentence and (q+a)
         sum_tfidf = 0.0
-        # sliding window bag of word as in baseline (consider entire passage)
+        # sliding window bag of word as in baseline
         baseline_score = 0.0
         # sliding window bag of word as in baseline (consider one sentence)
         baseline_sentence_score = 0.0
         # sliding window bag of word as in baseline (consider one sentence, and iCounts is per story)
         baseline_sentence_perStory_score = 0.0
+
+        if (story.name, sid, qid, aid) in self.cache['features']:
+            return self.cache['features'][(story.name, sid, qid, aid)]
         
         def get_tfidf(name, response, feature_names):
             if name in feature_names:
@@ -397,13 +426,23 @@ class MCTLinearRegression(object):
         target = set(q).union(set(a))
 
         # sum_tfidf
+        number_of_common_words = 0
         for word in story.passageSentences[sid]:
             if word in target:
+                number_of_common_words += 1
                 sum_tfidf += get_tfidf(word, response, feature_names)
                 #print 'adding tfidf %s of %s' %(get_tfidf(word, response, feature_names), word)
         features['sum_tfidf'] = sum_tfidf
 
-        # baseline_score
+        # buckets of sum_tfidf
+#         sum_tfidf_bucketSize = self.sum_tfidf_max_score/self.sum_tfidf_buckets
+#         sum_tfidf_bucket = int(sum_tfidf/sum_tfidf_bucketSize)
+#         if sum_tfidf_bucket >= self.sum_tfidf_max_score:
+#             features['sum_tfidf is more than ' + str(self.sum_tfidf_max_score)] = 1
+#         else:
+#             features['sum_tfidf is between '+str(sum_tfidf_bucket*sum_tfidf_bucketSize)+' and '+str(sum_tfidf_bucketSize*(sum_tfidf_bucket+1))] = 1
+
+        #baseline_score
         try:
             if self.cache['baseLineScore_story_name'] == story.name and \
                     self.cache['baseLineScore_qid'] == qid and \
@@ -427,7 +466,7 @@ class MCTLinearRegression(object):
             self.cache['baseLineScore_score'] = baseline_score
 
         features['baseline_score'] = baseline_score
-        
+
         # baseline_sentence_score
         sentence = story.passageSentences[sid]
         window_size = len(target)
@@ -446,6 +485,21 @@ class MCTLinearRegression(object):
         features['baseline_sentence_score'] = baseline_sentence_score
         features['baseline_sentence_perStory_score'] = baseline_sentence_perStory_score
 
+        # question_negation
+        # quesion contains ^wh.*'n't or not'
+        if re.search('^wh.*(n\'t|not)', story.rawQuestions[qid][1]):
+            features['question_negation'] = 1
+
+        # length features
+#        features['length_of_sentence'] = len(story.passageSentences[sid])
+#        features['length_of_question'] = len(story.questions[qid][1])
+#        features['length_of_answer'] = len(story.answers[qid][aid])
+#        features['length_of_common_words_in_qas is ' + str(number_of_common_words)] = 1.0
+        
+        # type of question
+        features['question is of type ' +  str(story.questions[qid][0])] = 1.0
+        
+        self.cache['features'][(story.name, sid, qid, aid)] = features
         return features
         
     def fit_OLD(self, stories):
@@ -479,6 +533,8 @@ class MCTLinearRegression(object):
         if self.verbose > 4:
             print self.tfidf.get_feature_names()
 
+        # create buckets of sum_tfidf
+#        self.createBucketSumtfidf()
         self.weights = util.cccp(self.extractFeatures, stories, self.params)
 
     def calc_icounts(self, stories):
@@ -498,7 +554,7 @@ class MCTLinearRegression(object):
                 
         for token, token_count in counts.iteritems():
             self.icounts[token] = np.log(1.0 + 1.0/token_count)
-        
+
         for story in stories:
             self.icountsPerStory[story.name] = defaultdict()
             for tkn, tknCnt in countsPerStory[story.name].iteritems():
@@ -548,16 +604,30 @@ class MCTLinearRegression(object):
         ANS_LETTERS = ['A', 'B', 'C', 'D']
         ans = []
         for story in stories:
-            if self.verbose > -1:
-                print story.correctAnswers
-                print story.passage
-                print story.questions
-                print story.answers
+            if self.verbose > 0:
+                print story.rawPassage, "\n"
+                print story.rawQuestions,  "\n"
+                print story.rawAnswers, "\n"
 
-                for qid in range(len(story.questions)):
-                    answer = max([(max([(util.dotProduct(self.weights, self.extractFeatures(story, sid, qid, aid)),sid) for \
-                                            sid in range(len(story.passageSentences))])[0], aid) for \
-                                      aid in range(len(story.answers[qid]))])[1]
-                    ans.append(ANS_LETTERS[answer])
+            for qid in range(len(story.questions)):
+                scores = []
+                for aid in range(len(story.answers[qid])):
+                    score = max([(util.dotProduct(self.weights, self.extractFeatures(story, sid, qid, aid)),sid) for \
+                                     sid in range(len(story.passageSentences))])
+                    scores.append((score, aid))
 
+                answer = max(scores)[1]
+                ans.append(ANS_LETTERS[answer])
+
+                if self.verbose > 0:
+                    if answer != story.correctAnswers[qid]:
+                        print 'WRONG: %s: correct answer %s, predicted answer %s, scores %s' \
+                            %(story.rawQuestions[qid][0], ANS_LETTERS[story.correctAnswers[qid]], ANS_LETTERS[answer], scores)
+                    else:
+                        print 'RIGHT: %s: correct answer %s, predicted answer %s, scores %s' \
+                            %(story.rawQuestions[qid][0], ANS_LETTERS[story.correctAnswers[qid]], ANS_LETTERS[answer], scores)
+
+            if self.verbose > 0:
+                print "\n"
+                        
         return ans
