@@ -34,6 +34,7 @@ class Story(object):
         self.rawPassage = None
         self.rawQuestions = []
         self.rawAnswers = []
+        self.rawPassageLen = 0
         self.passage = []
         self.passageSentences = []
         self.questions = []
@@ -48,6 +49,7 @@ class Story(object):
         self.params['lowercase'] = True ## fixme
         self.stopWords = stopwords
         self.correctAnswers = None
+        self.tokenPositions = {}
 
     def updateParameter(self, p, v):
         self.params[p] = v
@@ -72,13 +74,21 @@ class Story(object):
     def setStory(self, story):
         self.rawPassage = story
         tokens = nltk.word_tokenize(formatForProcessing(story))
+        self.rawPassageLen = len(tokens)
+        pos = 0
         for _ in tokens:
             __ = _.lower()
+            tkn = self.caseConvert(_)
             if not self.params['noStopWordsInPassage']:
-                self.passage.append(self.caseConvert(_))
+                self.passage.append(tkn)
             else:
                 if __ not in self.stopWords:
-                    self.passage.append(self.caseConvert(_))
+                    self.passage.append(tkn)
+            if tkn not in self.tokenPositions:
+                self.tokenPositions[tkn] = [pos]
+            else:
+                self.tokenPositions[tkn].append(pos)
+            pos += 1
         
         if self.params['useLemma']:
             self.passage = nltk.pos_tag(self.passage, tagset='universal')
@@ -296,6 +306,7 @@ class MCTLinearRegression(object):
         self.params['features'].append('baseline_sentence_score')
         self.params['features'].append('baseline_sentence_perStory_score')
         self.params['features'].append('question_negation')
+        self.params['features'].append('distance_based')
 #        self.params['features'].append('length_of_sentence')
 #        self.params['features'].append('length_of_question')
 #        self.params['features'].append('length_of_answer')
@@ -398,7 +409,7 @@ class MCTLinearRegression(object):
         return (X,Y)
 
     def extractFeatures(self, story, sid, qid, aid):
-        features = defaultdict()
+        features = defaultdict(float)
         # sum of tfidf of common words in sentence and (q+a)
         sum_tfidf = 0.0
         # sliding window bag of word as in baseline
@@ -466,8 +477,8 @@ class MCTLinearRegression(object):
             self.cache['baseLineScore_score'] = baseline_score
 
         features['baseline_score'] = baseline_score
-
-        # baseline_sentence_score
+        
+        # baseline_sentence_score and baseline_sentence_perStory_score
         sentence = story.passageSentences[sid]
         window_size = len(target)
         sentence_length = len(sentence)
@@ -485,23 +496,32 @@ class MCTLinearRegression(object):
         features['baseline_sentence_score'] = baseline_sentence_score
         features['baseline_sentence_perStory_score'] = baseline_sentence_perStory_score
 
-        # question_negation
-        # quesion contains ^wh.*'n't or not'
-        if re.search('^wh.*(n\'t|not)', story.rawQuestions[qid][1]):
-            features['question_negation'] = 1
+        #DistanceBased feature
+        Q_set = set(q)
+        Ai_set = set(a)
+        PW_set = set(sentence)
+        SQ_set = PW_set.intersection(Q_set) # Stopwords are already removed?
+        SAi_set = PW_set.intersection(Ai_set).difference(Q_set) # Words present in Passage and Answer, but not in Question.
+        feature_value = 0
 
-        # length features
-#        features['length_of_sentence'] = len(story.passageSentences[sid])
-#        features['length_of_question'] = len(story.questions[qid][1])
-#        features['length_of_answer'] = len(story.answers[qid][aid])
-#        features['length_of_common_words_in_qas is ' + str(number_of_common_words)] = 1.0
+        if len(SQ_set) == 0 or len(SAi_set) == 0:
+            feature_value = 1
+        else:
+            min = 100000 #TODO: Fix to int max.
+            for q_tkn in  Q_set:
+                for a_tkn in Ai_set:
+                    if q_tkn not in story.tokenPositions or a_tkn not in story.tokenPositions:
+                        continue
+                    for q_tkn_pos in story.tokenPositions[q_tkn]:
+                        for a_tkn_pos in story.tokenPositions[a_tkn]:
+                            if abs(q_tkn_pos - a_tkn_pos) < min:
+                                min = abs(q_tkn_pos - a_tkn_pos)
+            feature_value = float((min + 1))/(story.rawPassageLen - 1)
+        features['distance_based'] = feature_value
+
         
-        # type of question
-        features['question is of type ' +  str(story.questions[qid][0])] = 1.0
-        
-        self.cache['features'][(story.name, sid, qid, aid)] = features
         return features
-        
+    
     def fit_OLD(self, stories):
         token_dict = {}
         for story in stories:
