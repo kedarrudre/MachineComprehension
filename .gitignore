@@ -1,0 +1,12 @@
+*.pyc
+*.sln
+*.pyproj
+ProjProgress/mctest/
+ProjProgress/protobuf/
+ProjProgress/MCFinal/output
+/ProjProgress/MCFinal/data/MCTest/mc1.train.txt
+/ProjProgress/MCFinal/data/MCTest/mc1.train.tsv
+/ProjProgress/MCFinal/data/MCTest/mc1.train.ans
+/ProjProgress/MCFinal/data/MCTest
+/ProjProgress/160out5FeaturesDistance.txt
+/ProjProgress
