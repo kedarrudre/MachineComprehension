@@ -16,13 +16,27 @@ parser.add_argument("-algo", help='Possible algorithms: [slidingWindow, linearRe
 parser.add_argument("-stories", help="stories in tsv format; can be added multiple times", default=None, required=True, action='append')
 parser.add_argument("-answers", help="answers in tsv format; can be added multiple times", default=None, required=True, action='append')
 parser.add_argument("-verbose", type=int, help="increase output verbosity", default=0)
-parser.add_argument("-eta", type=float, help="SGD step", default=0.005)
+parser.add_argument("-eta", type=float, help="SGD step", default=0.001)
 parser.add_argument("-T",  type=int, help="SGD iterations of total samples", default=3)
 parser.add_argument("-Lambda", type=float, help="Lamda", default=0.1)
 parser.add_argument("-delta", type=float, help="delta for gradient calculation", default=0.0001)
-parser.add_argument("-cccp_itr_count", type=int, help="Number of CCCP iterations", default=10)
+parser.add_argument("-cccp_itr_count", type=int, help="Number of CCCP iterations", default=20)
+parser.add_argument("-corefDataDir", type=str, help="stories after coreference resolved", default='data/mctDataSetAfterCoref')
 parser.add_argument("--notrain", help='dont train, read weights from file <weights.txt>', action='store_true')
 parser.add_argument("--startFromExistingWeights", help='read weights from file <weights.txt> to start', action='store_true')
+parser.add_argument("--useNltkStopWords", help='use nltk english stop words', action='store_true')
+parser.add_argument("--useCorefFeatures", help='use coreference features', action='store_true')
+
+parser.add_argument("-sum_tfidf_on", type=int, help="0: don't use sum_tfidf, 1: use sum_tfidf", default=1)
+parser.add_argument("-baseline_score_on", type=int, help="0: don't use baseline_score, 1: use baseline_score", default=0)
+parser.add_argument("-sent_score_on", type=int, help="0: don't use sent_score, 1: use sent_score", default=1)
+parser.add_argument("-sent_perStory_score_on", type=int, help="0: don't use sent_perStory_score, 1: use sent_perStory_score", default=1)
+parser.add_argument("-sent2_perStory_score_on", type=int, help="0: don't use sent2_perStory_score, 1: use sent2_perStory_score", default=1)
+parser.add_argument("-sent3_perStory_score_on", type=int, help="0: don't use sent3_perStory_score, 1: use sent3_perStory_score", default=0)
+parser.add_argument("-question_negation_on", type=int, help="0: don't use question_negation, 1: use question_negation", default=0)
+parser.add_argument("-length", type=int, help="0: don't use length, 1: use length", default=1)
+parser.add_argument("-question_type_on", type=int, help="0: don't use question_type, 1: use question_type", default=0)
+
 args = parser.parse_args()
 
 def slidingWindow():
@@ -39,13 +53,13 @@ def slidingWindow():
         return answers
 
     for _ in args.stories:
-        stories.append(mcaAlgorithms.MCTReadData(_, args.verbose))
+        stories.append(mcaAlgorithms.MCTReadData(_, args))
     
     for _ in args.answers:
         correctAnswers += read_answers(_)
         
     ## Base Line algorithm
-    baseLineAlgo = mcaAlgorithms.MCTSlidingWindow(args.verbose)
+    baseLineAlgo = mcaAlgorithms.MCTSlidingWindow(args)
 
     if args.verbose > 0:
         print '**** training ****'
@@ -110,7 +124,7 @@ def linearRegression():
 
     stories = []
     for i in range(len(args.stories)):
-        myStoryObject = mcaAlgorithms.MCTReadData(args.stories[i], args.verbose)
+        myStoryObject = mcaAlgorithms.MCTReadData(args.stories[i], args)
         fin = open(args.answers[i], 'r')
         answers = map(lambda x: x.rstrip().split('\t'), fin.readlines())
         fin.close()
@@ -122,7 +136,7 @@ def linearRegression():
     fin.close()
     
     ## Linear Regression algorithm
-    linearRegressionAlgo = mcaAlgorithms.MCTLinearRegression(args.verbose)
+    linearRegressionAlgo = mcaAlgorithms.MCTLinearRegression(args)
 
     # update parameters
     linearRegressionAlgo.updateParameter('eta', args.eta)

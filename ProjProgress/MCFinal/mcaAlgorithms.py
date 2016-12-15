@@ -30,17 +30,20 @@ def get_wordnet_pos(treebank_tag):
         return wordnet.NOUN
 
 class Story(object):
-    def __init__(self, stopwords):
+    def __init__(self, stopwords, args):
         self.rawPassage = None
         self.rawQuestions = []
         self.rawAnswers = []
         self.passage = []
         self.passageSentences = []
+        self.passageAfterCoref = []
+        self.passageSentencesAfterCoref = []
         self.questions = []
         self.answers = []
         self.author = None
         self.name = None
         self.time = None
+        self.args = args
         self.params = defaultdict()
         self.params['noStopWordsInPassage'] = 1
         self.params['noStopWordsInQA'] = 1
@@ -72,33 +75,82 @@ class Story(object):
     def setStory(self, story):
         self.rawPassage = story
         tokens = nltk.word_tokenize(formatForProcessing(story))
-        for _ in tokens:
-            __ = _.lower()
-            if not self.params['noStopWordsInPassage']:
-                self.passage.append(self.caseConvert(_))
-            else:
-                if __ not in self.stopWords:
-                    self.passage.append(self.caseConvert(_))
         
         if self.params['useLemma']:
-            self.passage = nltk.pos_tag(self.passage, tagset='universal')
-            t = []
-            for _ in self.passage:
-                t.append(self.getLemmaWord(_))
-            self.passage = t
+            tokens = nltk.pos_tag(tokens, tagset='universal')
+            for _, tag in tokens:
+                __ = _.lower()
+                if not self.params['noStopWordsInPassage']:
+                    self.passage.append(self.getLemmaWord((self.caseConvert(_), tag)))
+                else:
+                    if __ not in self.stopWords:
+                        self.passage.append(self.getLemmaWord((self.caseConvert(_), tag)))
 
-        for sent in sent_tokenize(story):
-            tokens = nltk.word_tokenize(formatForProcessing(sent))
-            tokensAfterStopWords = []
-            if self.params['noStopWordsInPassage']:
+            for sent in sent_tokenize(story):
+                tokens = nltk.word_tokenize(formatForProcessing(sent))
+                tokens = nltk.pos_tag(tokens, tagset='universal')
+                tokensAfterStopWords = []
+                if self.params['noStopWordsInPassage']:
+                    for _,tag in tokens:
+                        __ = _.lower()
+                        if __ not in self.stopWords:
+                            tokensAfterStopWords.append(self.getLemmaWord((self.caseConvert(_),tag)))
+                    else:
+                        tokensAfterStopWords.append(self.getLemmaWord((self.caseConvert(_),tag)))
+                
+                self.passageSentences.append(tokensAfterStopWords)
+        else:
+            for _ in tokens:
+                __ = _.lower()
+                if not self.params['noStopWordsInPassage']:
+                    self.passage.append(self.caseConvert(_))
+                else:
+                    if __ not in self.stopWords:
+                        self.passage.append(self.caseConvert(_))
+
+            for sent in sent_tokenize(story):
+                tokens = nltk.word_tokenize(formatForProcessing(sent))
+                tokensAfterStopWords = []
+                if self.params['noStopWordsInPassage']:
+                    for _ in tokens:
+                        __ = _.lower()
+                        if __ not in self.stopWords:
+                            tokensAfterStopWords.append(self.caseConvert(_))
+                    else:
+                        tokensAfterStopWords.append(self.caseConvert(_))
+                
+                self.passageSentences.append(tokensAfterStopWords)
+
+            ## If args.useCorefFeatures is True, then
+            ## set few structures from story after coreference resolved
+            if self.args.useCorefFeatures:
+                fname = self.args.corefDataDir + '/'+ self.name + '.aftercoref.txt'
+                if not os.path.isfile(fname):
+                    print fname, " does not exist. Please generate stories after coreference resolved using gen_corenlp.py. See readme in data directory"
+                    exit()
+                f = open(fname, 'r')
+                text = f.read().strip()
+                tokens = nltk.word_tokenize(text)
                 for _ in tokens:
                     __ = _.lower()
-                    if __ not in self.stopWords:
-                        tokensAfterStopWords.append(self.caseConvert(_))
-            else:
-                tokensAfterStopWords.append(self.caseConvert(_))
-            self.passageSentences.append(tokensAfterStopWords)
-        
+                    if not self.params['noStopWordsInPassage']:
+                        self.passageAfterCoref.append(self.caseConvert(_))
+                    else:
+                        if __ not in self.stopWords:
+                            self.passageAfterCoref.append(self.caseConvert(_))
+                    
+                for sent in sent_tokenize(text):
+                    tokens = nltk.word_tokenize(sent)
+                    tokensAfterStopWords = []
+                    if self.params['noStopWordsInPassage']:
+                        for _ in tokens:
+                            __ = _.lower()
+                            if __ not in self.stopWords:
+                                tokensAfterStopWords.append(self.caseConvert(_))
+                        else:
+                            tokensAfterStopWords.append(self.caseConvert(_))
+                
+                    self.passageSentencesAfterCoref.append(tokensAfterStopWords)
 
     def setCorrectAnswer(self, x):
         self.correctAnswers = x
@@ -155,35 +207,39 @@ class Story(object):
         self.rawAnswers.append(rawAnswerList)
 
 class MCTReadData(object):
-    def __init__(self, fname, verbose):
+    def __init__(self, fname, args):
         #fixme: check format of supported file
         self.stories = []
+        self.args = args
 
         # collect stop words
-        stopwords = set()
-#        fin = open('/Users/msingh/cs221/project/mctDataSet/mctest-master/data/stopwords.txt','rU')
-        fin = open('stopwords.txt','rU')
-        for stopword in fin:
-            s = stopword.lower().strip()
-            stopwords.add(s)
-        fin.close()
+        stopwordsSet = set()
+        if args.useNltkStopWords:
+            stopwordsSet = set(stopwords.words('english'))
+        else:
+            fin = open('/Users/msingh/cs221/project/mctDataSet/mctest-master/data/stopwords.txt','rU')
+            fin = open('stopwords.txt','rU')
+            for _ in fin:
+                s = _.lower().strip()
+                stopwordsSet.add(s)
+            fin.close()
 
         # process stories
         fin = open(fname, 'rU')
-        if verbose > 0:
+        if args.verbose > 0:
             print 'Reading file %s: START' %(fname)
         for story in fin:
             story = story.strip()
-            s = Story(stopwords)
+            s = Story(stopwordsSet, self.args)
             data = re.split('\t', story)
             s.setName(data[0])
-            if verbose > 4:
+            if args.verbose > 4:
                 print 'Reading story %s' %(data[0])
             properties = re.split(';', data[1])
             for p in properties:
                 (name, v) = re.split(': ', p)
                 if name == 'Author':
-                    if verbose > 4:
+                    if args.verbose > 4:
                         print 'Setting Author %s for story %s' %(v, data[0])
                     s.setAuthor(v)
                     continue
@@ -199,13 +255,13 @@ class MCTReadData(object):
                     break
             self.stories.append(s)
         fin.close()
-        if verbose > 0:
+        if args.verbose > 0:
             print 'Reading file %s: DONE' %(fname)
 
 class MCTSlidingWindow(object):
-    def __init__(self, verbose):
-        self.icounts = {}
-        self.verbose = verbose
+    def __init__(self, args):
+        self.icounts = defaultdict(lambda: 0.0)
+        self.args = args
     
     def fit(self, stories):
         counts = defaultdict(lambda: 0)
@@ -213,7 +269,7 @@ class MCTSlidingWindow(object):
             for token in story.passage:
                 token = token.strip()
                 counts[token] += 1.0
-        if self.verbose > 4:
+        if self.args.verbose > 4:
             print "counts %s" %(len(counts))
             for item, value in sorted(counts.items()):
                 print item, value
@@ -221,7 +277,7 @@ class MCTSlidingWindow(object):
                 
         for token, token_count in counts.iteritems():
             self.icounts[token] = np.log(1.0 + 1.0/token_count)
-        if self.verbose > 4:
+        if self.args.verbose > 4:
             print "icounts are:"
             for item, value in sorted(self.icounts.iteritems()):
                 print item, value
@@ -240,7 +296,7 @@ class MCTSlidingWindow(object):
             if score > max_score:
                 max_score = score
                 passage_at_max_score = passage[i:i+j]
-        if self.verbose > 4:
+        if self.args.verbose > 4:
             print 'passage is %s' %(passage)
             print 'passage at max_score (%s) is %s' %(max_score, passage_at_max_score)
         return max_score
@@ -250,14 +306,14 @@ class MCTSlidingWindow(object):
         answers = []
         for id, (type, question) in enumerate(story.questions):
             question = set(question)
-            if self.verbose > 3:
+            if self.args.verbose > 3:
                 print 'type = %s, question = %s, answers = %s' %(type, question, story.answers[id])
 
             scores = [self.predict_target(story.passage, question.union(set(choice))) \
                           for i, choice in enumerate(story.answers[id])]
             ans = ANS_LETTERS[scores.index(max(scores))]
 
-            if self.verbose > 4:
+            if self.args.verbose > 4:
                 print 'scores: %s (%s)' %(scores, ans)
 
             answers.append(ans)
@@ -265,8 +321,8 @@ class MCTSlidingWindow(object):
         return answers
 
 class MCTLinearRegression(object):
-    def __init__(self, verbose):
-        self.verbose = verbose
+    def __init__(self, args):
+        self.args = args
         self.tfs = None
         self.tfidf = TfidfVectorizer(stop_words='english')
         self.window_size = None
@@ -278,8 +334,8 @@ class MCTLinearRegression(object):
         self.Y = []
         self.buckets = 20
         self.weights = defaultdict()
-        self.icounts = {}
-        self.icountsPerStory = {}
+        self.icounts = defaultdict(lambda: 0.0)
+        self.icountsPerStory = defaultdict(lambda: 0.0)
         self.cache = defaultdict()
         self.cache['features'] = {}
         self.params = {'read_weights_from_file': 0,
@@ -291,16 +347,39 @@ class MCTLinearRegression(object):
                        'features': []
                        }
         self.params['startFromExistingWeights'] = False
-        self.params['features'].append('sum_tfidf')
-        self.params['features'].append('baseline_score')
-        self.params['features'].append('baseline_sentence_score')
-        self.params['features'].append('baseline_sentence_perStory_score')
-        self.params['features'].append('question_negation')
-#        self.params['features'].append('length_of_sentence')
-#        self.params['features'].append('length_of_question')
-#        self.params['features'].append('length_of_answer')
-        self.params['features'].append('question is of type multiple')
-        self.params['features'].append('question is of type one')
+            
+        if args.sum_tfidf_on:
+            self.params['features'].append('sum_tfidf')
+            
+        if args.baseline_score_on:
+            self.params['features'].append('baseline_score')
+            
+        if args.sent_score_on:
+            self.params['features'].append('sent_score')
+
+        if args.sent_perStory_score_on:
+            self.params['features'].append('sent_perStory_score')
+            
+        if args.sent2_perStory_score_on:
+            self.params['features'].append('sent2_perStory_score')
+
+        if args.sent3_perStory_score_on:
+            self.params['features'].append('sent3_perStory_score')
+        
+        if args.question_negation_on:
+            self.params['features'].append('question_negation')
+
+        if args.length:
+            self.params['features'].append('length_of_sentence')
+            self.params['features'].append('length_of_question')
+            self.params['features'].append('length_of_answer')
+
+        if args.question_type_on:
+            self.params['features'].append('question is of type multiple')
+            self.params['features'].append('question is of type one')
+
+        if args.useCorefFeatures:
+            self.params['features'].append('sent_perStory_score_after_coref')
 
 #        for i in range(10):
 #            self.params['features'].append('length_of_common_words_in_qas is ' + str(i))
@@ -340,13 +419,13 @@ class MCTLinearRegression(object):
 
         for qno, typeAndq in enumerate(story.questions):
             type, q = typeAndq
-            if self.verbose > 4:
+            if self.args.verbose > 4:
                 print 'question is %s' %(q)
             for ano, a in enumerate(story.answers[qno]):
                 scores = []
                 minScore = float('inf')
                 maxScore = float('-inf')
-                if self.verbose > 4:
+                if self.args.verbose > 4:
                     print 'answer is %s' %(a)
                 target = q.union(a)
                 if self.slidingWindow:
@@ -379,19 +458,19 @@ class MCTLinearRegression(object):
                 scoreRange = maxScore - minScore
                 step = scoreRange/self.buckets
                 features = [0] * self.buckets
-                if self.verbose > 4:
+                if self.args.verbose > 4:
                     print scores
                     print minScore
                     print maxScore
                 if step != 0:
                     for x in scores:
                         s = x - minScore
-                        if self.verbose > 4:
+                        if self.args.verbose > 4:
                             print int(s/step)
                         features[int(s/step)-1] = 1
 
                 X.append(features)
-                if self.verbose > 4:
+                if self.args.verbose > 4:
                     print story.correctAnswers
                 Y.append(story.correctAnswers[qno] == ano)
             
@@ -404,9 +483,16 @@ class MCTLinearRegression(object):
         # sliding window bag of word as in baseline
         baseline_score = 0.0
         # sliding window bag of word as in baseline (consider one sentence)
-        baseline_sentence_score = 0.0
+        sent_score = 0.0
         # sliding window bag of word as in baseline (consider one sentence, and iCounts is per story)
-        baseline_sentence_perStory_score = 0.0
+        sent_perStory_score = 0.0
+        # sliding window bag of word as in baseline (consider two sentence, and iCounts is per story)
+        sent2_perStory_score = 0.0
+        # sliding window bag of word as in baseline (consider three sentence, and iCounts is per story)
+        sent3_perStory_score = 0.0
+
+        # after coreference resolved
+        sent_perStory_score_after_coref = 0.0
 
         if (story.name, sid, qid, aid) in self.cache['features']:
             return self.cache['features'][(story.name, sid, qid, aid)]
@@ -432,7 +518,8 @@ class MCTLinearRegression(object):
                 number_of_common_words += 1
                 sum_tfidf += get_tfidf(word, response, feature_names)
                 #print 'adding tfidf %s of %s' %(get_tfidf(word, response, feature_names), word)
-        features['sum_tfidf'] = sum_tfidf
+        if self.args.sum_tfidf_on:
+            features['sum_tfidf'] = sum_tfidf
 
         # buckets of sum_tfidf
 #         sum_tfidf_bucketSize = self.sum_tfidf_max_score/self.sum_tfidf_buckets
@@ -465,9 +552,10 @@ class MCTLinearRegression(object):
             self.cache['baseLineScore_aid'] = aid
             self.cache['baseLineScore_score'] = baseline_score
 
-        features['baseline_score'] = baseline_score
+        if self.args.baseline_score_on:
+            features['baseline_score'] = baseline_score
 
-        # baseline_sentence_score
+        # sent_score
         sentence = story.passageSentences[sid]
         window_size = len(target)
         sentence_length = len(sentence)
@@ -478,26 +566,87 @@ class MCTLinearRegression(object):
                 if i+j < sentence_length and sentence[i+j] in target:
                     score += self.icounts[sentence[i+j]]
                     scorePerStory += self.icountsPerStory[story.name][sentence[i+j]]
-            if score > baseline_sentence_score:
-                baseline_sentence_score = score
-            if scorePerStory > baseline_sentence_perStory_score:
-                baseline_sentence_perStory_score = scorePerStory
-        features['baseline_sentence_score'] = baseline_sentence_score
-        features['baseline_sentence_perStory_score'] = baseline_sentence_perStory_score
+            if score > sent_score:
+                sent_score = score
+            if scorePerStory > sent_perStory_score:
+                sent_perStory_score = scorePerStory
+
+        if self.args.sent_score_on:
+            features['sent_score'] = sent_score
+
+        if self.args.sent_perStory_score_on:
+            features['sent_perStory_score'] = sent_perStory_score
+
+        # score over two sentences
+        allSentences = []
+        if sid+1 < len(story.passageSentences):
+            allSentences = story.passageSentences[sid:sid+1]
+
+        for sent in allSentences:
+            for i in xrange(len(sent)):
+                score = 0.0
+                for j in xrange(window_size):
+                    if i+j < len(sent) and sent[i+j] in target:
+                        score += self.icountsPerStory[story.name][sent[i+j]]
+                if score > sent2_perStory_score:
+                    sent2_perStory_score = score
+
+        if self.args.sent2_perStory_score_on:
+            features['sent2_perStory_score'] = sent2_perStory_score
+
+        # score over three sentences
+        allSentences = []
+        if sid+2 < len(story.passageSentences):
+            allSentences = story.passageSentences[sid:sid+2]
+            
+        for sent in allSentences:
+            for i in xrange(len(sent)):
+                score = 0.0
+                for j in xrange(window_size):
+                    if i+j < len(sent) and sent[i+j] in target:
+                        score += self.icountsPerStory[story.name][sent[i+j]]
+                if score > sent3_perStory_score:
+                    sent3_perStory_score = score
+         
+        if self.args.sent3_perStory_score_on:
+            features['sent3_perStory_score'] = sent3_perStory_score
+        
 
         # question_negation
         # quesion contains ^wh.*'n't or not'
-        if re.search('^wh.*(n\'t|not)', story.rawQuestions[qid][1]):
-            features['question_negation'] = 1
+        if self.args.question_negation_on:
+            if re.search('^wh.*(n\'t|not)', story.rawQuestions[qid][1]):
+                features['question_negation'] = 1
 
         # length features
-#        features['length_of_sentence'] = len(story.passageSentences[sid])
-#        features['length_of_question'] = len(story.questions[qid][1])
-#        features['length_of_answer'] = len(story.answers[qid][aid])
-#        features['length_of_common_words_in_qas is ' + str(number_of_common_words)] = 1.0
+        if self.args.length and story.questions[qid][0] == 'multiple':
+            features['length_of_sentence'] = len(story.passageSentences[sid])
+            features['length_of_question'] = len(story.questions[qid][1])
+            features['length_of_answer'] = len(story.answers[qid][aid])
+            features['length_of_common_words_in_qas is ' + str(number_of_common_words)] = 1.0
         
         # type of question
-        features['question is of type ' +  str(story.questions[qid][0])] = 1.0
+        if self.args.question_type_on:
+            features['question is of type ' +  str(story.questions[qid][0])] = 1.0
+
+        # after coreference features
+        if self.args.useCorefFeatures:
+            if sid < len(story.passageSentencesAfterCoref):
+                sentence = story.passageSentencesAfterCoref[sid]
+            else:
+                sentence = story.passageSentencesAfterCoref[-1]
+            window_size = len(target)
+            sentence_length = len(sentence)
+            for i in xrange(sentence_length):
+                score = 0.0
+                for j in xrange(window_size):
+                    if i+j < sentence_length and sentence[i+j] in target:
+                        score += self.icountsPerStory[story.name][sentence[i+j]]
+                if score > sent_perStory_score_after_coref:
+                    sent_perStory_score_after_coref = score
+
+            if story.questions[qid][0] == 'multiple':
+                features['sent_perStory_score_after_coref'] = sent_perStory_score_after_coref
         
         self.cache['features'][(story.name, sid, qid, aid)] = features
         return features
@@ -507,11 +656,11 @@ class MCTLinearRegression(object):
         for story in stories:
             token_dict[story.name] = story.rawPassage
         self.tfs = self.tfidf.fit_transform(token_dict.values())
-        if self.verbose > 4:
+        if self.args.verbose > 4:
             print self.tfidf.get_feature_names()
 
         for story in stories:
-            if self.verbose > 4:
+            if self.args.verbose > 4:
                 print story.correctAnswers
                 print story.passage
                 print story.questions
@@ -521,7 +670,7 @@ class MCTLinearRegression(object):
             self.Y += Y
 
         # fit 
-        if self.verbose > 3:
+        if self.args.verbose > 3:
             print 'fitting'
         self.clf.fit(np.array(self.X), np.array(self.Y))
         
@@ -530,7 +679,7 @@ class MCTLinearRegression(object):
         for story in stories:
             token_dict[story.name] = story.rawPassage
         self.tfs = self.tfidf.fit_transform(token_dict.values())
-        if self.verbose > 4:
+        if self.args.verbose > 4:
             print self.tfidf.get_feature_names()
 
         # create buckets of sum_tfidf
@@ -546,7 +695,7 @@ class MCTLinearRegression(object):
                 token = token.strip()
                 counts[token] += 1.0
                 countsPerStory[story.name][token] += 1
-        if self.verbose > 4:
+        if self.args.verbose > 4:
             print "counts %s" %(len(counts))
             for item, value in sorted(counts.items()):
                 print item, value
@@ -556,22 +705,22 @@ class MCTLinearRegression(object):
             self.icounts[token] = np.log(1.0 + 1.0/token_count)
 
         for story in stories:
-            self.icountsPerStory[story.name] = defaultdict()
+            self.icountsPerStory[story.name] = defaultdict(lambda: 0.0)
             for tkn, tknCnt in countsPerStory[story.name].iteritems():
                 self.icountsPerStory[story.name][tkn] = np.log(1.0 + 1.0/tknCnt)
 
-        if self.verbose > 4:
+        if self.args.verbose > 4:
             print "icounts are:"
             for item, value in sorted(self.icounts.iteritems()):
                 print item, value
 
     # predict
     def predict_OLD(self, stories):
-        if self.verbose > 3:
+        if self.args.verbose > 3:
             print 'Predicting'
         ans = []
         for story in stories:
-            if self.verbose > -1:
+            if self.args.verbose > -1:
                 print story.correctAnswers
                 print story.passage
                 print story.questions
@@ -598,14 +747,14 @@ class MCTLinearRegression(object):
         return ans
 
     def predict(self, stories):
-        if self.verbose > 3:
+        if self.args.verbose > 3:
             print 'Predicting'
 
         ANS_LETTERS = ['A', 'B', 'C', 'D']
         ans = []
         for story in stories:
-            if self.verbose > 0:
-                print story.rawPassage, "\n"
+            if self.args.verbose > 0:
+                print formatForPrint(story.rawPassage), "\n"
                 print story.rawQuestions,  "\n"
                 print story.rawAnswers, "\n"
 
@@ -616,10 +765,17 @@ class MCTLinearRegression(object):
                                      sid in range(len(story.passageSentences))])
                     scores.append((score, aid))
 
-                answer = max(scores)[1]
+                # if question contains "n't | not", and begin
+                # with "what, who, whose", select the minium score.
+                s = story.rawQuestions[qid][1].strip()
+                if re.search('^(who|what|whose).*(n\'t|not)', s, flags=re.IGNORECASE):
+                    answer = min(scores)[1]
+                else:
+                    answer = max(scores)[1]
+
                 ans.append(ANS_LETTERS[answer])
 
-                if self.verbose > 0:
+                if self.args.verbose > 0:
                     if answer != story.correctAnswers[qid]:
                         print 'WRONG: %s: correct answer %s, predicted answer %s, scores %s' \
                             %(story.rawQuestions[qid][0], ANS_LETTERS[story.correctAnswers[qid]], ANS_LETTERS[answer], scores)
@@ -627,7 +783,7 @@ class MCTLinearRegression(object):
                         print 'RIGHT: %s: correct answer %s, predicted answer %s, scores %s' \
                             %(story.rawQuestions[qid][0], ANS_LETTERS[story.correctAnswers[qid]], ANS_LETTERS[answer], scores)
 
-            if self.verbose > 0:
+            if self.args.verbose > 0:
                 print "\n"
                         
         return ans
