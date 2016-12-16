@@ -17,6 +17,7 @@ parser.add_argument("-stories", help="stories in tsv format; can be added multip
 parser.add_argument("-answers", help="answers in tsv format; can be added multiple times", default=None, required=True, action='append')
 parser.add_argument("-verbose", type=int, help="increase output verbosity", default=0)
 parser.add_argument("-eta", type=float, help="SGD step", default=0.001)
+parser.add_argument("-dynmaic_eta", type=int, help='turn on dynamic eta', default=0)
 parser.add_argument("-T",  type=int, help="SGD iterations of total samples", default=3)
 parser.add_argument("-Lambda", type=float, help="Lamda", default=0.1)
 parser.add_argument("-delta", type=float, help="delta for gradient calculation", default=0.0001)
@@ -34,10 +35,12 @@ parser.add_argument("-sent_perStory_score_on", type=int, help="0: don't use sent
 parser.add_argument("-sent2_perStory_score_on", type=int, help="0: don't use sent2_perStory_score, 1: use sent2_perStory_score", default=1)
 parser.add_argument("-sent3_perStory_score_on", type=int, help="0: don't use sent3_perStory_score, 1: use sent3_perStory_score", default=0)
 parser.add_argument("-question_negation_on", type=int, help="0: don't use question_negation, 1: use question_negation", default=0)
-parser.add_argument("-length", type=int, help="0: don't use length, 1: use length", default=1)
-parser.add_argument("-question_type_on", type=int, help="0: don't use question_type, 1: use question_type", default=0)
+parser.add_argument("-length", type=int, help="0: don't use length, 1: use length", default=0)
+parser.add_argument("-question_type_on", type=int, help="0: don't use question_type, 1: use question_type", default=1)
 
 args = parser.parse_args()
+
+print args
 
 def slidingWindow():
     if args.verbose:
@@ -138,18 +141,6 @@ def linearRegression():
     ## Linear Regression algorithm
     linearRegressionAlgo = mcaAlgorithms.MCTLinearRegression(args)
 
-    # update parameters
-    linearRegressionAlgo.updateParameter('eta', args.eta)
-    linearRegressionAlgo.updateParameter('T', args.T)
-    linearRegressionAlgo.updateParameter('lambda', args.Lambda)
-    linearRegressionAlgo.updateParameter('delta', args.delta)
-    linearRegressionAlgo.updateParameter('number_of_cccp_iterations', args.cccp_itr_count)
-
-    if args.notrain:
-        linearRegressionAlgo.updateParameter('read_weights_from_file', True)
-    if args.startFromExistingWeights:
-        linearRegressionAlgo.updateParameter('startFromExistingWeights', True)
-    
     if args.verbose > 0:
         print '**** training ****'
         for i, _ in enumerate(args.stories):

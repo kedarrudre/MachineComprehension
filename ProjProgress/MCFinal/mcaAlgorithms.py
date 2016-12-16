@@ -328,7 +328,7 @@ class MCTLinearRegression(object):
         self.window_size = None
         # if False, then use setences for match.
         # if True, then use sliding window at every position of word in the passage
-        self.slidingWindow = True
+        self.slidingWindow = False
         self.clf = linear_model.SGDClassifier()
         self.X = []
         self.Y = []
@@ -338,64 +338,55 @@ class MCTLinearRegression(object):
         self.icountsPerStory = defaultdict(lambda: 0.0)
         self.cache = defaultdict()
         self.cache['features'] = {}
-        self.params = {'read_weights_from_file': 0,
-                       'number_of_cccp_iterations': 2,
-                       'eta': 0.001,
-                       'T': 1,
-                       'lambda': 0.1,
-                       'delta': 0.001,
-                       'features': []
-                       }
-        self.params['startFromExistingWeights'] = False
-            
+        self.features = []
+
         if args.sum_tfidf_on:
-            self.params['features'].append('sum_tfidf')
+            self.features.append('sum_tfidf')
             
         if args.baseline_score_on:
-            self.params['features'].append('baseline_score')
+            self.features.append('baseline_score')
             
         if args.sent_score_on:
-            self.params['features'].append('sent_score')
+            self.features.append('sent_score')
 
         if args.sent_perStory_score_on:
-            self.params['features'].append('sent_perStory_score')
+            self.features.append('sent_perStory_score')
             
         if args.sent2_perStory_score_on:
-            self.params['features'].append('sent2_perStory_score')
+            self.features.append('sent2_perStory_score')
 
         if args.sent3_perStory_score_on:
-            self.params['features'].append('sent3_perStory_score')
+            self.features.append('sent3_perStory_score')
         
         if args.question_negation_on:
-            self.params['features'].append('question_negation')
+            self.features.append('question_negation')
 
         if args.length:
-            self.params['features'].append('length_of_sentence')
-            self.params['features'].append('length_of_question')
-            self.params['features'].append('length_of_answer')
+            self.features.append('length_of_sentence')
+            self.features.append('length_of_question')
+            self.features.append('length_of_answer')
 
         if args.question_type_on:
-            self.params['features'].append('question is of type multiple')
-            self.params['features'].append('question is of type one')
+            self.features.append('question is of type multiple')
+            self.features.append('question is of type one')
 
         if args.useCorefFeatures:
-            self.params['features'].append('sent_perStory_score_after_coref')
+            self.features.append('sent_perStory_score_after_coref')
 
 #        for i in range(10):
-#            self.params['features'].append('length_of_common_words_in_qas is ' + str(i))
+#            self.features.append('length_of_common_words_in_qas is ' + str(i))
 
 #        self.sum_tfidf_buckets = 5
 #        self.sum_tfidf_max_score = 2.0
 
+#        self.features.append('simlarity')
+
     def createBucketSumtfidf(self):
         bucketSize = self.sum_tfidf_max_score/self.sum_tfidf_buckets
         for i in range(self.sum_tfidf_buckets):
-            self.params['features'].append('sum_tfidf is between '+str(bucketSize*i)+' and '+str(bucketSize*(i+1)))
+            self.features.append('sum_tfidf is between '+str(bucketSize*i)+' and '+str(bucketSize*(i+1)))
             
-        self.params['features'].append('sum_tfidf is more than ' + str(self.sum_tfidf_max_score))
-
-    def updateParameter(self, p, v):
-        self.params[p] = v
+        self.features.append('sum_tfidf is more than ' + str(self.sum_tfidf_max_score))
 
     def extractFeatures_OLD(self, story):
         # extract features
@@ -647,7 +638,19 @@ class MCTLinearRegression(object):
 
             if story.questions[qid][0] == 'multiple':
                 features['sent_perStory_score_after_coref'] = sent_perStory_score_after_coref
-        
+
+        # cosine simlarity between sentence and q,a
+#         a = defaultdict(lambda: 0.0)
+#         b = defaultdict(lambda: 0.0)
+#         if sid < len(story.passageSentencesAfterCoref):
+#             for word in story.passageSentencesAfterCoref[sid]:
+#                 a[word] = get_tfidf(word, response, feature_names)
+
+#         for word in story.answers[qid][aid]:
+#             b[word] = get_tfidf(word, response, feature_names)
+            
+#        features['simlarity'] = util.cosineSimlarity(a,b)
+
         self.cache['features'][(story.name, sid, qid, aid)] = features
         return features
         
@@ -684,7 +687,7 @@ class MCTLinearRegression(object):
 
         # create buckets of sum_tfidf
 #        self.createBucketSumtfidf()
-        self.weights = util.cccp(self.extractFeatures, stories, self.params)
+        self.weights = util.cccp(self.extractFeatures, stories, self.args, self.features)
 
     def calc_icounts(self, stories):
         counts = defaultdict(lambda: 0)
@@ -749,11 +752,15 @@ class MCTLinearRegression(object):
     def predict(self, stories):
         if self.args.verbose > 3:
             print 'Predicting'
+        
+        if self.args.verbose:
+            print "weights are ", self.weights
 
         ANS_LETTERS = ['A', 'B', 'C', 'D']
         ans = []
         for story in stories:
             if self.args.verbose > 0:
+                print story.name
                 print formatForPrint(story.rawPassage), "\n"
                 print story.rawQuestions,  "\n"
                 print story.rawAnswers, "\n"
@@ -764,7 +771,6 @@ class MCTLinearRegression(object):
                     score = max([(util.dotProduct(self.weights, self.extractFeatures(story, sid, qid, aid)),sid) for \
                                      sid in range(len(story.passageSentences))])
                     scores.append((score, aid))
-
                 # if question contains "n't | not", and begin
                 # with "what, who, whose", select the minium score.
                 s = story.rawQuestions[qid][1].strip()

@@ -11,6 +11,7 @@ import random
 import copy
 import pickle
 from shutil import copyfile
+import math
 
 # Common useful functions
 def formatForPrint(str):
@@ -46,7 +47,7 @@ def increment(d1, scale, d2):
     for f, v in d2.items():
         d1[f] = d1.get(f, 0) + v * scale
 
-def cccp(f, stories, params):
+def cccp(f, stories, args, features):
     # f is feature extractor function f(story, sid, qid, aid) where
     # story -> story object
     # sid -> sentence id or window id
@@ -58,7 +59,7 @@ def cccp(f, stories, params):
     # T number of iterations to run
     # returns weights
     weights = defaultdict(float)
-    if params['startFromExistingWeights']:
+    if args.startFromExistingWeights:
         if os.path.isfile('weights.txt'):
             with open('weights.txt', 'rb') as myWeightsFile:
                 weights = pickle.loads(myWeightsFile.read())
@@ -68,10 +69,10 @@ def cccp(f, stories, params):
         else:
             exit('weights.txt file is not found')
     else:
-        for item in params['features']:
+        for item in features:
             weights[item] = random.random()
-
-    if params['read_weights_from_file']:
+            
+    if args.notrain:
         if os.path.isfile('weights.txt'):
             with open('weights.txt', 'rb') as myWeightsFile:
                 weights = pickle.loads(myWeightsFile.read())
@@ -81,30 +82,52 @@ def cccp(f, stories, params):
         return weights
 
     optimalSentenceIds = []
-    hyperParamEta = params['eta']
-    hyperParamT = params['T']
-    hyperParamLambda = params['lambda']
-    hyperParamDelta = params['delta']
+    hyperParamEta = args.eta
+    hyperParamT = args.T
+    hyperParamLambda = args.Lambda
+    hyperParamDelta = args.delta
     
     def func():
         print 'weights are %s' %(weights)
         ans = hyperParamLambda * dotProduct(weights, weights)
         for id, story in enumerate(stories):
             for qid in range(len(story.questions)):
-                ans -= max([dotProduct(weights, f(story, w, qid, story.correctAnswers[qid])) for \
-                                w in range(len(story.passageSentences))])
-                ans += max([max([dotProduct(weights, f(story, w, qid, aid)) for \
-                                     w in range(len(story.passageSentences))]) + story.correctAnswers[qid] != aid for \
-                                aid in range(len(story.answers))])
+                f1 = max([dotProduct(weights, f(story, w, qid, story.correctAnswers[qid])) for \
+                              w in range(len(story.passageSentences))])
+                f2 = []
+                for aid in range(len(story.answers)):
+                    val = max([dotProduct(weights, f(story, w, qid, aid)) for \
+                                   w in range(len(story.passageSentences))])
+                    if story.correctAnswers[qid] != aid:
+                        val += 1
+
+                    f2.append(val)
+                
+                g = max(f2)
+                ans -= f1
+                ans += g
+#                print 'f is ', f1, 'g is ', g, 'f2 is ', f2
+
         return ans
 
     def func1(story, qid, weights_copy):
         ans = hyperParamLambda * dotProduct(weights_copy, weights_copy)
-        ans -= max([dotProduct(weights_copy, f(story, w, qid, story.correctAnswers[qid])) for \
-                        w in range(len(story.passageSentences))])
-        ans += max([max([dotProduct(weights_copy, f(story, w, qid, aid)) for \
-                             w in range(len(story.passageSentences))]) + story.correctAnswers[qid] != aid for \
-                        aid in range(len(story.answers))])
+        for qid in range(len(story.questions)):
+            f1 = max([dotProduct(weights_copy, f(story, w, qid, story.correctAnswers[qid])) for \
+                          w in range(len(story.passageSentences))])
+            f2 = []
+            for aid in range(len(story.answers)):
+                val = max([dotProduct(weights_copy, f(story, w, qid, aid)) for \
+                               w in range(len(story.passageSentences))])
+                if story.correctAnswers[qid] != aid:
+                    val += 1
+
+                f2.append(val)
+                
+            g = max(f2)
+            ans -= f1
+            ans += g
+
         return ans
 
     def stochasticGradientDescent():
@@ -144,7 +167,7 @@ def cccp(f, stories, params):
                     increment(weights, -hyperParamEta, gradient)
                 print 'weight is %s' %(weights)
 
-    for itr in range(params['number_of_cccp_iterations']):
+    for itr in range(args.cccp_itr_count):
         # step1, fixed weights, compute optimum w that minimizes
         # max_{w \in W} w.f(Pi, w, qi, ai)
         for id, story in enumerate(stories):
@@ -165,7 +188,12 @@ def cccp(f, stories, params):
 
         # step 2
         stochasticGradientDescent()
-        
+
+        # reduce the step after 5 iteration
+        if args.dynmaic_eta:
+            if itr > 0 and not itr%5:
+                hyperParamEta /= 2
+            
         # print the loss
         print('iteration %s, f = %s' %(itr, func()))
 
@@ -183,3 +211,10 @@ def cccp(f, stories, params):
 
 
 
+def cosineSimlarity(a,b):
+    # a and b are default dictionaries
+    a1 = math.sqrt(dotProduct(a,a))
+    b1 = math.sqrt(dotProduct(b,b))
+    if a1 == 0 or b1 == 0:
+        return 0.0
+    return dotProduct(a,b)/(a1*b1)
