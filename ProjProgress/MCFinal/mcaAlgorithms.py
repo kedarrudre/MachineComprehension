@@ -8,6 +8,7 @@ import sys
 from collections import defaultdict
 import numpy as np
 import re
+import SyntacticFeatureHelper
 from util import formatForPrint, formatForProcessing
 import util
 from nltk.corpus import stopwords
@@ -15,6 +16,7 @@ from nltk.corpus import wordnet
 from nltk.tokenize import sent_tokenize
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn import linear_model
+from nltk.parse.stanford import StanfordDependencyParser
 
 lemmatizer = nltk.WordNetLemmatizer()
 def get_wordnet_pos(treebank_tag):
@@ -36,6 +38,7 @@ class Story(object):
         self.rawAnswers = []
         self.rawPassageLen = 0
         self.passage = []
+        self.rawPassageSentences = []
         self.passageSentences = []
         self.passageAfterCoref = []
         self.passageSentencesAfterCoref = []
@@ -104,6 +107,20 @@ class Story(object):
                         self.passage.append(self.getLemmaWord((self.caseConvert(_), tag)))
 
             for sent in sent_tokenize(story):
+                self.rawPassageSentences.append(formatForProcessing(sent))
+                tokens = nltk.word_tokenize(formatForProcessing(sent))
+                tokens = nltk.pos_tag(tokens, tagset='universal')
+                tokensAfterStopWords = []
+                if self.params['noStopWordsInPassage']:
+                    for _,tag in tokens:
+                        __ = _.lower()
+                        if __ not in self.stopWords:
+                            tokensAfterStopWords.append(self.getLemmaWord((self.caseConvert(_),tag)))
+                    else:
+                        tokensAfterStopWords.append(self.getLemmaWord((self.caseConvert(_),tag)))                
+                self.passageSentences.append(tokensAfterStopWords)
+                        
+            for sent in sent_tokenize(story):
                 tokens = nltk.word_tokenize(formatForProcessing(sent))
                 tokens = nltk.pos_tag(tokens, tagset='universal')
                 tokensAfterStopWords = []
@@ -126,6 +143,7 @@ class Story(object):
                         self.passage.append(self.caseConvert(_))
 
             for sent in sent_tokenize(story):
+                self.rawPassageSentences.append(formatForProcessing(sent))
                 tokens = nltk.word_tokenize(formatForProcessing(sent))
                 tokensAfterStopWords = []
                 if self.params['noStopWordsInPassage']:
@@ -265,6 +283,7 @@ class MCTReadData(object):
                 continue
             s.setStory(data[2])
             index = 3
+
             while True:
                 s.setQuestion(data[index], data[index+1:index+5])
                 index += 5
@@ -353,6 +372,7 @@ class MCTLinearRegression(object):
         self.weights = defaultdict()
         self.icounts = defaultdict(lambda: 0.0)
         self.icountsPerStory = defaultdict(lambda: 0.0)
+        self.syntacticFeature = SyntacticFeatureHelper.SyntacticFeatureHelper()
         self.cache = defaultdict()
         self.cache['features'] = {}
         self.features = []
@@ -689,7 +709,11 @@ class MCTLinearRegression(object):
                             if abs(q_tkn_pos - a_tkn_pos) < min:
                                 min = abs(q_tkn_pos - a_tkn_pos)
             feature_value = float((min + 1))/(story.rawPassageLen - 1)
-        features['distance_based'] = feature_value
+        #features['distance_based'] = feature_value
+
+        # Syntactic Features.
+        features['syntactic_dep_count'], features['syntactic_root_ans_count'], features['syntactic_only_root_count'], \
+        features['syntactic_no_match_count'] = self.syntacticFeature.getSyntacticFeaturesScore(story.rawQuestions[qid][1], story.rawAnswers[qid][aid], story.rawPassageSentences[sid])
 
         self.cache['features'][(story.name, sid, qid, aid)] = features
         
